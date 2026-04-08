@@ -1,0 +1,647 @@
+\documentclass[a4paper,12pt]{report}
+
+% =============================================================
+% 1. PACKAGES ET CONFIGURATION GLOBALE
+% =============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[francais,english]{babel}\selectlanguage{francais}
+
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{helvet}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{eurosym}
+\usepackage{float}
+\usepackage{tikz}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{listings}
+
+\usetikzlibrary{shapes, arrows, positioning, shadows.blur, patterns, fit}
+
+% Police par défaut : Sans-Serif
+\renewcommand{\familydefault}{\sfdefault}
+\geometry{hmargin=2.5cm, vmargin=2.5cm, headheight=45pt}
+
+% --- PALETTE DE COULEURS (CHARTE ROBOTANK) ---
+\definecolor{UTGreen}{RGB}{47, 110, 193}      % Bleu principal  #2E6EC1
+\definecolor{UTSlate}{RGB}{31, 78, 121}        % Bleu foncé     #1F4E79
+\definecolor{UTRed}{RGB}{192, 57, 43}          % Rouge alertes
+\definecolor{UTBlue}{RGB}{22, 160, 133}        % Cyan accent
+\definecolor{UTLight}{RGB}{214, 228, 240}      % Bleu très clair
+
+% --- CONFIGURATION DES BOITES ---
+\newtcolorbox{justification}[1]{
+    colback=UTGreen!5!white, colframe=UTGreen, fonttitle=\bfseries,
+    title=Justification Technique : #1, boxrule=0.5mm, rounded corners, drop shadow
+}
+\newtcolorbox{calcbox}[1]{
+    colback=UTBlue!5!white, colframe=UTBlue, fonttitle=\bfseries,
+    title=Calcul de Dimensionnement : #1, boxrule=0.5mm, rounded corners
+}
+\newtcolorbox{alertbox}[1]{
+    colback=UTRed!5!white, colframe=UTRed, fonttitle=\bfseries,
+    title=Analyse de Risque : #1, boxrule=0.5mm, rounded corners, drop shadow
+}
+\newtcolorbox{infobox}[1]{
+    colback=UTSlate!5!white, colframe=UTSlate, fonttitle=\bfseries,
+    title=Information : #1, boxrule=0.5mm, rounded corners
+}
+
+% --- LIENS ET METADONNÉES ---
+\hypersetup{colorlinks=true, linkcolor=UTSlate, urlcolor=UTGreen, citecolor=UTGreen}
+
+% --- COMMANDE IMAGE SÉCURISÉE ---
+\newcommand{\safeincludegraphics}[2][]{%
+  \IfFileExists{#2}{\includegraphics[#1]{#2}}{%
+    \begin{tcolorbox}[colback=red!10, colframe=red, title=Fichier Manquant]
+        \centering \textbf{Attention :} L'image \texttt{#2} est introuvable.\\
+        Déposez le fichier dans le dossier du projet.
+    \end{tcolorbox}%
+  }%
+}
+
+% --- EN-TÊTES ---
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small \textbf{\color{UTSlate}SAÉ6.IOM.01 — Sujet n°10 : Robot de surveillance et de mesure}}
+\rhead{\small \textbf{Cahier des Charges Technique} \\ \footnotesize Hénon Léo-Paul — IUT de Blois — vFinal}
+\lfoot{\small \color{UTSlate}Léo-Paul Hénon}
+\rfoot{\small \color{UTSlate}SAÉ6.IOM.01}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{UTGreen}\leaders\hrule height \headrulewidth\hfill}}
+
+% --- TITRES ---
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{UTSlate}}{\chaptertitlename\ \thechapter}{20pt}{\Huge\color{UTGreen}}
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{UTGreen}}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{UTSlate}}{\thesubsection}{1em}{}
+
+% --- LISTES ---
+\setlist[itemize]{noitemsep, topsep=4pt}
+\setlist[enumerate]{noitemsep, topsep=4pt}
+
+% --- LISTINGS ---
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{UTSlate},
+  keywordstyle=\color{UTBlue}\bfseries,
+  commentstyle=\color{UTSlate},
+  stringstyle=\color{UTGreen},
+  showstringspaces=false
+}
+
+\begin{document}
+
+% =============================================================
+% PAGE DE GARDE
+% =============================================================
+\begin{titlepage}
+    \newgeometry{top=2cm, bottom=2cm, left=2cm, right=2cm}
+    \begin{center}
+        \vspace*{0.5cm}
+        {\Large \textbf{\color{UTSlate}BUT Réseaux \& Télécommunications}}\\[0.2cm]
+        {\small Parcours Internet et Objets Mobiles (IOM) — IUT de Blois}
+        \vspace*{1.5cm}
+
+        {\color{UTSlate}\rule{\linewidth}{1.2mm}} \\[0.5cm]
+        {\Huge \bfseries \color{UTSlate} CAHIER DES CHARGES TECHNIQUE} \\[0.4cm]
+        {\Large \color{UTGreen}Spécifications, Architecture \& Validation}\\[0.3cm]
+        {\color{UTSlate}\rule{\linewidth}{1.2mm}}
+
+        \vspace*{2cm}
+
+        \begin{tcolorbox}[colback=UTLight, colframe=UTSlate, width=0.92\textwidth, arc=2mm, boxrule=0.8mm]
+            \centering
+            \vspace{0.3cm}
+            {\Large \textbf{\color{UTSlate} ROBOTANK}}\\[0.2cm]
+            {\large \textbf{\color{UTGreen}Robot de Surveillance et de Mesure}}\\[0.2cm]
+            \textit{\color{UTSlate}Architecture : Raspberry Pi 4 + XIAO ESP32-C6 (Zigbee)}\\[0.1cm]
+            \textit{\color{UTSlate}Caméra Fisheye IR + OLED + HC-SR04 + Steppers 28BYJ-48}
+            \vspace{0.3cm}
+        \end{tcolorbox}
+
+        \vfill
+
+        \begin{tabular}{p{0.45\textwidth} | p{0.45\textwidth}}
+            \textbf{\color{UTSlate}Chef de Projet} & \textbf{\color{UTSlate}Commanditaire} \\
+            \textsc{Léo-Paul Hénon} & M. Jeanneret \\
+            IUT de Blois & SAÉ6.IOM.01 \\
+        \end{tabular}
+
+        \vspace*{1cm}
+        {\small \color{UTSlate}Version Finale — \today}
+    \end{center}
+    \restoregeometry
+\end{titlepage}
+
+% =============================================================
+% SUIVI DOCUMENT + SOMMAIRE
+% =============================================================
+\thispagestyle{empty}
+\chapter*{Suivi du Document}
+\begin{center}
+    \begin{tabular}{|c|c|p{8cm}|c|}
+    \hline
+    \rowcolor{UTGreen!20} \textbf{Ver.} & \textbf{Date} & \textbf{Objet de la modification} & \textbf{Auteur} \\ \hline
+    1.0 & 04/02/26 & Analyse fonctionnelle & L. Hénon \\ \hline
+    2.0 & 05/02/26 & Intégration architecture hybride & L. Hénon \\ \hline
+    3.0 & \today & Mise à jour RPi4 + XIAO ESP32-C6 Zigbee + steppers + charte graphique & L. Hénon \\ \hline
+    \end{tabular}
+\end{center}
+
+\newpage
+\tableofcontents
+\newpage
+
+% =============================================================
+% CHAPITRE 0 : RAPPEL DU CDCF
+% =============================================================
+\chapter{Rappel du Cahier des Charges Fonctionnel (CdCF)}
+
+\section{Description du besoin client}
+Le client demande un robot mobile connecté capable de :
+\begin{itemize}
+    \item se déplacer en mode \textbf{autonome} ou \textbf{télécommandé} (Bluetooth),
+    \item détecter un \textbf{obstacle} et adapter son comportement (arrêt / changement direction),
+    \item capturer une \textbf{photo} lors d’un événement (obstacle, changement direction),
+    \item mesurer la \textbf{qualité de réception Wifi} (RSSI) afin de produire une \textbf{cartographie/heatmap},
+    \item fournir un \textbf{retour utilisateur local} via écran OLED et LEDs d’état.
+\end{itemize}
+
+\section{Contraintes client}
+\begin{infobox}{Contraintes imposées}
+\begin{itemize}
+    \item utilisation \textbf{indoor} (sol plat),
+    \item tension système \textbf{max 12V},
+    \item autonomie minimale \textbf{20 minutes},
+    \item usage prioritaire du \textbf{matériel IUT},
+    \item solution \textbf{présentable} et proche d’un produit commercialisable.
+\end{itemize}
+\end{infobox}
+
+\begin{infobox}{Remarque budget}
+Aucune contrainte de budget n’est imposée pour ce projet (matériel fourni / stock IUT).
+Le budget peut toutefois être présenté en \textit{valeur de remplacement} à titre indicatif.
+\end{infobox}
+
+% =============================================================
+% CHAPITRE 1 : INTRODUCTION
+% =============================================================
+\chapter{Introduction et Contexte}
+
+\section{Objectif du Projet}
+Ce Cahier des Charges Technique (CdCT) encadre la réalisation du \textbf{Sujet n°10}.
+Le système attendu est un robot mobile capable :
+\begin{itemize}
+    \item de \textbf{se déplacer} (mode autonome + mode manuel),
+    \item de \textbf{surveiller} une zone (détection + capture d’image),
+    \item de \textbf{mesurer} la qualité du Wifi via le RSSI,
+    \item de produire une \textbf{heatmap} des mesures,
+    \item d’informer l’utilisateur via \textbf{OLED + LEDs d’état}.
+\end{itemize}
+
+\section{Périmètre}
+\begin{infobox}{Dans le périmètre}
+\begin{itemize}
+    \item Navigation indoor, évitement simple,
+    \item Mesure RSSI Wifi + stockage local,
+    \item Capture photo (PiCam IR 1080p),
+    \item Restitution CSV + heatmap,
+    \item Feedback local (OLED + LEDs).
+\end{itemize}
+\end{infobox}
+
+\begin{infobox}{Hors périmètre}
+\begin{itemize}
+    \item SLAM/LiDAR avancé,
+    \item IA “reconnaissance faciale” (non requis/interdit),
+    \item temps réel garanti en zone sans Wifi.
+\end{itemize}
+\end{infobox}
+
+% =============================================================
+% CHAPITRE 2 : ANALYSE FONCTIONNELLE
+% =============================================================
+\chapter{Analyse Fonctionnelle}
+
+\section{Bête à corne}
+\begin{itemize}
+    \item \textbf{À qui rend-il service ?} Technicien réseau / enseignant / démonstration
+    \item \textbf{Sur quoi agit-il ?} Zone indoor + qualité Wifi
+    \item \textbf{Dans quel but ?} Surveiller + cartographier la couverture Wifi
+\end{itemize}
+
+\section{Fonctions de service}
+\begin{table}[H]
+\centering
+\rowcolors{2}{gray!10}{white}
+\begin{tabular}{|c|p{11cm}|}
+\hline
+\rowcolor{UTSlate}\color{white}\textbf{ID} & \color{white}\textbf{Fonction principale} \\ \hline
+FP1 & Se déplacer (manuel + autonome) \\ \hline
+FP2 & Détecter et éviter les obstacles \\ \hline
+FP3 & Mesurer le RSSI Wifi à intervalle régulier \\ \hline
+FP4 & Associer une position estimée aux mesures (odométrie simple) \\ \hline
+FP5 & Enregistrer les données localement (CSV/JSON) \\ \hline
+FP6 & Générer une heatmap exploitable \\ \hline
+FP7 & Capturer une photo lors d’un événement (obstacle/changement direction) \\ \hline
+FP8 & Afficher l’état du robot (OLED + LEDs : normal/obstacle/erreur) \\ \hline
+\end{tabular}
+\caption{Fonctions principales (service rendu)}
+\end{table}
+
+\section{Contraintes générales}
+\begin{itemize}
+    \item Autonomie minimale : \textbf{20 minutes} (démo)
+    \item Tension système : \textbf{max 12V}
+    \item Utilisation : \textbf{indoor}
+    \item Fabrication : contrainte \textbf{soudure/PCB} (shield maison)
+\end{itemize}
+
+% =============================================================
+% CHAPITRE 3 : EXIGENCES
+% =============================================================
+\chapter{Exigences et Critères d’Acceptation}
+
+\section{Méthode}
+Chaque exigence est testable et associée à un critère de validation.
+
+\begin{longtable}{|c|p{7.6cm}|p{3.6cm}|p{1.8cm}|}
+\hline
+\rowcolor{UTGreen!25}\textbf{ID} & \textbf{Exigence} & \textbf{Critère d’acceptation} & \textbf{Priorité} \\ \hline
+\endhead
+
+EX-01 & Le robot doit fonctionner au moins 20 min en autonomie. & Chrono : \(\geq\) 20 min & MUST \\ \hline
+EX-02 & Le robot doit être pilotable manuellement (manette Zigbee (XIAO ESP32-C6)). & Téléopération OK 5 min & MUST \\ \hline
+EX-03 & En autonome, éviter un obstacle placé à 20 cm. & 0 collision / 10 essais & MUST \\ \hline
+EX-04 & Mesurer le RSSI Wifi à intervalle \(\leq 2\) s. & CSV : pas > 2s & SHOULD \\ \hline
+EX-05 & Stocker localement les mesures en cas de perte Wifi. & logs présents offline & MUST \\ \hline
+EX-06 & Produire une heatmap exportable (PNG). & fichier PNG lisible & SHOULD \\ \hline
+EX-07 & Capturer une photo horodatée lors d’un événement. & image horodatée & SHOULD \\ \hline
+EX-08 & Disposer d’un arrêt d’urgence logiciel. & STOP immédiat & MUST \\ \hline
+EX-09 & La tension 5V du Raspberry Pi doit rester stable (4.9–5.2V). & mesure stable & MUST \\ \hline
+EX-10 & Afficher l’état sur OLED (mode + RSSI + batterie si dispo). & info visible & SHOULD \\ \hline
+EX-11 & LED verte = fonctionnement normal. & allumée en RUN & SHOULD \\ \hline
+EX-12 & LED rouge = obstacle détecté. & allumée si obstacle & MUST \\ \hline
+EX-13 & LED orange = erreur / sous-tension / défaut capteur. & allumée si défaut & SHOULD \\ \hline
+
+\caption{Exigences testables et critères d'acceptation}
+\end{longtable}
+
+\begin{justification}{Priorisation}
+\textbf{MUST} = nécessaire pour valider la démo.  
+\textbf{SHOULD} = améliore le rendu et l’expérience utilisateur.
+\end{justification}
+
+% =============================================================
+% CHAPITRE 4 : SOLUTIONS TECHNIQUES & MATERIEL
+% =============================================================
+\chapter{Solutions Techniques \& Matériel}
+
+\section{Justification de l'Architecture Hybride}
+\begin{justification}{Hybride RPi + Kit Arduino}
+Le kit Arduino Engineering fournit une base mécanique (moteurs + châssis).  
+Le Raspberry Pi apporte la puissance de calcul, le Wifi, la caméra IR, l’affichage OLED et l’intégration logicielle Python.
+\end{justification}
+\newpage
+\section{Liste exhaustive des composants (BOM)}
+\begin{infobox}{Principe}
+La liste ci-dessous constitue la liste exhaustive des composants nécessaires au fonctionnement du robot (matériel principal + interface + câblage + sécurité).
+\end{infobox}
+
+\begin{longtable}{|p{6cm}|c|p{6cm}|}
+\hline
+\rowcolor{UTSlate}\color{white}\textbf{Composant} & \color{white}\textbf{Qté} & \color{white}\textbf{Rôle / Remarques} \\ \hline
+\endhead
+
+\textbf{Raspberry Pi 4 Model B 4Go} & 1 & unité centrale, Wifi, traitements, logs \\ \hline
+\textbf{Carte microSD 16/32Go} & 1 & OS + stockage logs \\ \hline
+\textbf{Raspberry Pi Camera IR 1080p} & 1 & photo/vision nocturne IR \\ \hline
+\textbf{Capteur ultrason HC-SR04 ou SR04M} & 1 & mesure distance obstacle \\ \hline
+\textbf{Écran OLED I2C 0.96'' (SSD1306)} & 1 & affichage mode, RSSI, état \\ \hline
+\textbf{LED Verte 5mm} & 1 & état RUN \\ \hline
+\textbf{LED Rouge 5mm} & 1 & obstacle / stop sécurité \\ \hline
+\textbf{LED Orange 5mm} & 1 & défaut capteur / erreur \\ \hline
+\textbf{Résistances 220$\Omega$} & 3 & limitation courant LEDs \\ \hline
+\textbf{Adaptation niveau ECHO (diviseur)} & 2 & ex: 1k/2k ou 10k/20k (5V$\rightarrow$3.3V) \\ \hline
+\textbf{Driver ULN2003 (x2)} & 1 & commande moteurs DC \\ \hline
+\textbf{Châssis 3D imprimé + Moteurs stepper 28BYJ-48 + Roues} & 1 & base mécanique \\ \hline
+\textbf{Batterie LiPo 2S 7.4V} & 1 & alimentation \\ \hline
+\textbf{Chargeur LiPo adapté} & 1 & sécurité charge \\ \hline
+\textbf{Convertisseur DC-DC 12V$\rightarrow$5V (3A min)} & 1 & alimentation stable du RPi \\ \hline
+\textbf{Condensateurs (1000µF + 100nF)} & 2+ & découplage anti-reboot \\ \hline
+\textbf{Interrupteur général} & 1 & coupure alimentation \\ \hline
+\textbf{Fusible / protection (option)} & 1 & sécurité \\ \hline
+\textbf{Breadboard / plaque d’essai} & 1 & prototypage \\ \hline
+\textbf{PCB vierge (shield maison)} & 1 & version soudée \\ \hline
+\textbf{Câbles Dupont M/F} & 1 lot & connexions prototypes \\ \hline
+\textbf{Connecteurs JST / borniers} & 1 lot & connexions batterie/moteurs \\ \hline
+\textbf{Colliers + gaine thermo} & 1 lot & finition, sécurité \\ \hline
+
+\caption{BOM (Bill Of Materials) – liste exhaustive des composants}
+\end{longtable}
+
+\section{Capteurs \& Interface utilisateur}
+\begin{itemize}
+    \item \textbf{Ultrason} : obstacle (distance), déclenche LED rouge + photo si événement.
+    \item \textbf{PiCam IR} : capture 1080p, utile même faible luminosité.
+    \item \textbf{OLED} : affiche mode (manuel/autonome), RSSI, état.
+    \item \textbf{LEDs} : feedback instantané (RUN / obstacle / défaut).
+\end{itemize}
+
+% =============================================================
+% CHAPITRE 5 : ARCHITECTURE SYSTEME
+% =============================================================
+\chapter{Architecture Système}
+
+\section{Schéma synoptique}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    scale=0.7, transform shape,
+    node distance=3cm,
+    block/.style={rectangle, draw=UTSlate, fill=white, text width=3.4cm, text centered, rounded corners, minimum height=1.5cm, drop shadow},
+    rpi/.style={rectangle, draw=UTGreen, fill=UTGreen!10, text width=4.8cm, text centered, minimum height=3cm, line width=1.5pt, drop shadow},
+    line_data/.style={draw, -latex, thick, color=UTBlue},
+    line_power/.style={draw, -latex, thick, color=UTRed, dashed}
+]
+% --- NOEUDS ---
+\node [rpi] (cpu) {\textbf{Raspberry Pi 4}\\(Master)};
+\node [block, left=6cm of cpu] (sensors) {\textbf{Capteurs}\\HC-SR04 + XIAO\#2};
+\node [block, right=6cm of cpu] (actuators) {\textbf{Steppers 28BYJ-48}\\Driver ULN2003};
+\node [block, above=2.6cm of cpu] (cam) {\textbf{PiCam IR 1080p}};
+\node [block, below=2.6cm of cpu] (ui) {\textbf{OLED I2C}\\+ LEDs};
+\node [block, below=2.8cm of ui] (power) {\textbf{Batterie LiPo 2S}\\7.4V + DC-DC 5V};
+
+% --- LIGNES DONNEES ---
+\draw[line_data] (sensors) -- node[above, yshift=2pt] {\small GPIO} (cpu);
+\draw[line_data] (cam) -- node[right, xshift=3pt] {\small CSI} (cpu);
+\draw[line_data] (cpu) -- node[above, yshift=2pt] {\small PWM/GPIO} (actuators);
+\draw[line_data] (cpu) -- node[right, xshift=3pt] {\small I2C/GPIO} (ui);
+
+% --- LIGNES PUISSANCE ---
+% 11.1V vers driver moteurs
+\draw[line_power] (power.east) -| node[pos=0.75, below, xshift=10pt] {\small 7.4V} (actuators.south);
+
+% 5V stable vers Raspberry Pi
+\draw[line_power] (power.north) -- node[right, xshift=3pt] {\small 5V stable} (cpu.south);
+
+% (optionnel mais logique) 5V vers OLED+LEDs (si tu veux le montrer)
+\draw[line_power] (cpu.south) -- (ui.north);
+
+% --- LEGENDE ---
+\node[draw, align=left] at (0, -7.2) {\textcolor{UTBlue}{\textbf{---}} Données \quad \textcolor{UTRed}{\textbf{- - -}} Puissance};
+
+\end{tikzpicture}
+\caption{Architecture matérielle RoboTank (RPi4 + Zigbee + Steppers)}
+\end{figure}
+
+% =============================================================
+% CHAPITRE 6 : ARCHITECTURE LOGICIELLE
+% =============================================================
+\chapter{Architecture Logicielle}
+
+\section{Modules (organisation)}
+\begin{itemize}
+    \item \textbf{server.py} : serveur Flask principal, API REST, threads dédiés
+    \item \textbf{xiao\_reader()} : lecture /dev/ttyACM0, commandes Zigbee F/B/L/R/S
+    \item \textbf{explore\_loop()} : dead reckoning, marquage grille, mesure RSSI
+    \item \textbf{\_cam\_loop()} : capture Picamera2 MJPEG 30fps
+    \item \textbf{avoidance\_loop()} : évitement obstacles HC-SR04 + rotation 90°/180°
+    \item \textbf{serial\_reader()} : lecture HC-SR04 via /dev/ttyUSB0
+    \item \textbf{index.html} : interface web Flask (joystick, carte, caméra, vitesse)
+    \item \textbf{/api/map} : grille JSON 100×100 + position robot (dead reckoning)
+\end{itemize}
+
+\section{Flux de données}
+\begin{itemize}
+    \item Joystick $\rightarrow$ XIAO\#1 (Zigbee ED) $\rightarrow$ XIAO\#2 (Coordinator) $\rightarrow$ /dev/ttyACM0 $\rightarrow$ drive()
+    \item HC-SR04 $\rightarrow$ /dev/ttyUSB0 $\rightarrow$ avoidance\_loop() $\rightarrow$ rotation automatique
+    \item explore\_loop() $\rightarrow$ dead reckoning (x,y,$\theta$) $\rightarrow$ grille JSON $\rightarrow$ canvas web
+    \item Picamera2 $\rightarrow$ MJPEG $\rightarrow$ /video\_feed $\rightarrow$ interface web
+\end{itemize}
+
+% =============================================================
+% CHAPITRE 7 : DIMENSIONNEMENT ELECTRIQUE
+% =============================================================
+\chapter{Dimensionnement \& Énergie}
+
+\section{Hypothèses de consommation (mise à jour)}
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{6cm}|c|c|}
+\hline
+\rowcolor{UTGreen!25}\textbf{Élément} & \textbf{Puissance} & \textbf{Remarques} \\ \hline
+Raspberry Pi 4 Model B 4Go & 3.5W & charge moyenne \\ \hline
+PiCam IR 1080p & 1.0W & capture ponctuelle \\ \hline
+OLED I2C & 0.3W & affichage continu \\ \hline
+LEDs (3x) & 0.2W & selon état \\ \hline
+Steppers 28BYJ-48 (x2) + ULN2003 & 3.0W & moyenne, hors pointe \\ \hline
+Ultrason & 0.2W & négligeable \\ \hline
+\textbf{Total} & \textbf{7.7W} & estimation moyenne \\ \hline
+\end{tabular}
+\caption{Bilan de puissance estimé (avec OLED + LEDs + PiCam)}
+\end{table}
+
+\section{Courant moyen}
+\[
+I_{moy}=\frac{P}{U}=\frac{7.7}{11.1}\approx 0.69A
+\]
+
+\section{Autonomie}
+\begin{calcbox}{Autonomie théorique}
+Énergie batterie : \(11.1V \times 0.8Ah = 8.88Wh\).\\
+Rendement régulation estimé : \(0.9\).\\[2mm]
+\[
+T=\frac{8.88\times 0.9}{7.7}\approx 1.04h \approx 1h02
+\]
+\textbf{Conclusion :} autonomie largement suffisante pour 20 minutes de démonstration.
+\end{calcbox}
+
+\section{Sécurité batterie LiPo}
+\begin{alertbox}{Risque LiPo}
+\textbf{Risque :} surcharge, décharge profonde, gonflement.\\
+\textbf{Mesures :} chargeur adapté, stockage à 3.8V/cell, inspection visuelle, interrupteur général.
+\end{alertbox}
+
+% =============================================================
+% CHAPITRE 8 : RISQUES
+% =============================================================
+\chapter{Analyse des Risques}
+
+\begin{alertbox}{Perte Wifi}
+\textbf{Risque :} RSSI faible / trous de couverture.\\
+\textbf{Mesure :} logs offline + export différé.
+\end{alertbox}
+
+\begin{alertbox}{Collision / blocage}
+\textbf{Risque :} obstacle non détecté / faux négatif.\\
+\textbf{Mesures :} ultrason prioritaire + stop + LED rouge + réduction vitesse.
+\end{alertbox}
+
+\begin{alertbox}{Sous-tension 5V}
+\textbf{Risque :} reboot Raspberry Pi lors des pointes moteur.\\
+\textbf{Mesures :} DC-DC 5V 3A min, masses communes, câblage court, condensateurs.
+\end{alertbox}
+
+% =============================================================
+% CHAPITRE 9 : CYBERSECURITE
+% =============================================================
+\chapter{Sécurité et Cybersécurité}
+
+\section{Menaces}
+\begin{itemize}
+    \item accès non autorisé (SSH)
+    \item interception Wifi
+    \item extraction données si SD accessible
+\end{itemize}
+
+\section{Mesures}
+\begin{itemize}
+    \item identifiants changés, SSH par clé
+    \item pare-feu UFW (ports minimaux)
+    \item données non sensibles (RSSI/position)
+\end{itemize}
+
+% =============================================================
+% CHAPITRE 10 : VALIDATION
+% =============================================================
+\chapter{Plan de Tests et Validation}
+
+\section{Tests unitaires}
+\begin{itemize}
+    \item Test moteurs : marche avant/arrière, PWM
+    \item Test ultrason : distance OK à 10/20/50cm
+    \item Test Wifi : RSSI loggé
+    \item Test caméra : photo horodatée (jour + pénombre)
+    \item Test OLED : affichage mode + RSSI
+    \item Test LEDs : vert RUN, rouge obstacle, orange défaut
+\end{itemize}
+
+\section{Recette système}
+\begin{table}[H]
+\centering
+\rowcolors{2}{gray!10}{white}
+\begin{tabular}{|c|p{7cm}|p{4cm}|}
+\hline
+\rowcolor{UTSlate}\color{white}\textbf{ID} & \color{white}\textbf{Test} & \color{white}\textbf{Résultat attendu} \\ \hline
+T-01 & Autonomie 20 min & OK \(\geq\) 20 min \\ \hline
+T-02 & Évitement obstacle 20 cm (10 essais) & 0 collision \\ \hline
+T-03 & Photo sur événement obstacle & image horodatée \\ \hline
+T-04 & OLED affiche mode + RSSI & lisible \\ \hline
+T-05 & LED rouge obstacle & allumée \\ \hline
+T-06 & Heatmap générée après parcours & PNG valide \\ \hline
+T-07 & Mode offline Wifi coupé & logs présents \\ \hline
+\end{tabular}
+\caption{Table de recette (mise à jour)}
+\end{table}
+
+% =============================================================
+% CHAPITRE 11 : PLANIFICATION
+% =============================================================
+\chapter{Planification}
+
+\section{Diagramme de Gantt}
+\begin{landscape}
+    \thispagestyle{empty}
+    \begin{figure}[H]
+        \centering
+        \vspace*{1cm}
+        \begin{tcolorbox}[colback=UTLight,colframe=UTSlate,title=Diagramme de Gantt]\centering\textit{Insérer ici le diagramme de Gantt (fichier gantt.png)}\end{tcolorbox}
+        \caption{Planning Gantt du Projet (Livrable 1)}
+    \end{figure}
+\end{landscape}
+
+% =============================================================
+% CHAPITRE 12 : NOTICE UTILISATION (OBLIGATOIRE)
+% =============================================================
+\chapter{Notice d’Utilisation}
+
+\section{Mise sous tension}
+\begin{enumerate}
+    \item Vérifier la batterie et les connexions (moteurs + DC-DC + RPi).
+    \item Actionner l’interrupteur général.
+    \item Attendre le démarrage du Raspberry Pi (\~30s).
+\end{enumerate}
+
+\section{Signification OLED + LEDs}
+\begin{itemize}
+    \item \textbf{LED verte} : fonctionnement normal (RUN)
+    \item \textbf{LED rouge} : obstacle détecté / arrêt sécurité
+    \item \textbf{LED orange} : défaut système (capteur/alim)
+\end{itemize}
+
+\section{Modes}
+\begin{itemize}
+    \item \textbf{Mode manuel} : pilotage via manette Zigbee physique
+    \item \textbf{Mode autonome} : déplacement + évitement + mesures RSSI
+\end{itemize}
+
+\section{Récupération des données}
+Les logs et photos sont stockés sur la carte SD :
+\begin{itemize}
+    \item \texttt{/home/pi/logs/} : CSV/JSON
+    \item \texttt{/home/pi/photos/} : images horodatées
+\end{itemize}
+
+% =============================================================
+% CHAPITRE 13 : NOTICE MISE À JOUR / MAINTENANCE (OBLIGATOIRE)
+% =============================================================
+\chapter{Notice de Maintenance et Mise à Jour}
+
+\section{Maintenance préventive}
+\begin{itemize}
+    \item inspection batterie LiPo (gonflement)
+    \item vérification serrage mécanique
+    \item contrôle câbles moteurs et connecteurs
+    \item nettoyage optique caméra
+\end{itemize}
+
+\section{Mise à jour logicielle (exemple)}
+\begin{lstlisting}[language=bash]
+cd /home/pi/robot
+git pull
+sudo reboot
+\end{lstlisting}
+
+% =============================================================
+% CONCLUSION
+% =============================================================
+\chapter{Conclusion}
+
+Ce cahier des charges technique formalise les exigences, l’architecture et la validation du robot.
+L’ajout de la PiCam IR, de l’OLED et des LEDs améliore fortement l’expérience utilisateur, la surveillance et la robustesse en démonstration.
+Le système répond aux fonctionnalités demandées : déplacement, évitement, mesure RSSI et cartographie.
+
+% =============================================================
+% ANNEXES
+% =============================================================
+\appendix
+\chapter{Annexes}
+
+\section{Fichiers attendus dans le dossier}
+\begin{itemize}
+    \item \texttt{logo\_iut\_blois.png}
+    \item \texttt{gantt.png}
+\end{itemize}
+
+\end{document}

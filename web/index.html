@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RoboTank</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════ */
+:root {
+  --bg:      #080c10;
+  --s0:      #0c1118;
+  --s1:      #121820;
+  --s2:      #1a2230;
+  --border:  #1e2d3d;
+  --green:   #00ff9d;
+  --cyan:    #00c8ff;
+  --yellow:  #ffd060;
+  --red:     #ff4060;
+  --orange:  #ff8c42;
+  --text:    #cdd9e5;
+  --muted:   #4a6070;
+  --gG: 0 0 12px rgba(0,255,157,.35);
+  --gC: 0 0 12px rgba(0,200,255,.35);
+  --gR: 0 0 12px rgba(255,64,96,.35);
+  --gY: 0 0 12px rgba(255,208,96,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:'Chakra Petch',sans-serif;overflow:hidden;}
+
+/* scanlines subtiles */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);}
+
+/* ═══════════════════════════════════════════
+   LAYOUT PRINCIPAL
+═══════════════════════════════════════════ */
+#app{
+  display:grid;
+  grid-template-rows:42px 1fr;
+  height:100vh; width:100vw;
+  overflow:hidden;
+}
+
+/* Desktop : 3 colonnes */
+#main{
+  display:grid;
+  grid-template-columns: 320px 1fr 280px;
+  overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;background:var(--s0);
+  border-bottom:1px solid var(--border);
+  z-index:100;position:relative;
+}
+header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.4;}
+
+.logo{
+  font-family:'Space Mono',monospace;font-size:.9rem;letter-spacing:.25em;
+  color:var(--cyan);text-shadow:var(--gC);
+}
+.logo span{color:var(--green);text-shadow:var(--gG);}
+
+.hstats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+.chip{
+  display:flex;align-items:center;gap:5px;
+  padding:3px 8px;border-radius:3px;
+  border:1px solid var(--border);background:var(--s1);
+  font-size:.6rem;letter-spacing:.1em;color:var(--muted);
+  transition:.2s;cursor:default;
+}
+.chip.active{border-color:var(--green);color:var(--green);}
+.chip.warn{border-color:var(--red);color:var(--red);}
+
+.dot{width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:.3s;}
+.dot.on{background:var(--green);box-shadow:var(--gG);animation:pulse 2s infinite;}
+.dot.move{background:var(--yellow);box-shadow:var(--gY);animation:pulse .6s infinite;}
+.dot.err{background:var(--red);box-shadow:var(--gR);animation:pulse .4s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+#clock{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;}
+
+/* ═══════════════════════════════════════════
+   COLONNE GAUCHE — CAMÉRA + CARTE
+═══════════════════════════════════════════ */
+#col-left{
+  display:flex;flex-direction:column;
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+
+/* ── Caméra (plus petite) ── */
+#cam-panel{
+  position:relative;
+  height:280px;flex-shrink:0;
+  background:#000;overflow:hidden;
+  border-bottom:1px solid var(--border);
+}
+#cam-feed{width:100%;height:100%;object-fit:cover;display:none;}
+#cam-off{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;color:var(--muted);
+}
+.cam-ico{font-size:2rem;opacity:.15;}
+#cam-off p{font-size:.55rem;letter-spacing:.2em;}
+
+#cam-badge{
+  position:absolute;top:8px;left:8px;
+  display:none;align-items:center;gap:4px;
+  background:rgba(0,0,0,.8);border:1px solid var(--red);
+  border-radius:3px;padding:2px 7px;font-size:.55rem;letter-spacing:.1em;color:var(--red);
+}
+#cam-badge.show{display:flex;}
+.rec{width:5px;height:5px;border-radius:50%;background:var(--red);animation:pulse .9s infinite;}
+
+#cam-toggle-btn{
+  position:absolute;bottom:8px;right:8px;
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,0,0,.75);border:1px solid var(--border);
+  border-radius:4px;padding:4px 10px;backdrop-filter:blur(4px);
+}
+#cam-toggle-btn span{font-size:.58rem;letter-spacing:.1em;color:var(--muted);}
+.tgl{position:relative;width:34px;height:18px;cursor:pointer;}
+.tgl input{display:none;}
+.tgl-track{width:100%;height:100%;background:var(--border);border-radius:9px;transition:.3s;}
+.tgl input:checked~.tgl-track{background:rgba(0,255,157,.2);border-color:var(--green);}
+.tgl-thumb{position:absolute;top:2px;left:2px;width:12px;height:12px;
+  background:var(--muted);border-radius:50%;transition:.3s;}
+.tgl input:checked~.tgl-thumb{transform:translateX(16px);background:var(--green);}
+
+/* Obstacle overlay sur cam */
+#obstacle-overlay{
+  position:absolute;top:8px;right:8px;
+  display:none;flex-direction:column;align-items:flex-end;gap:6px;z-index:5;
+}
+#obstacle-banner{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(8,12,16,.9);border:1px solid var(--red);border-radius:4px;
+  padding:6px 10px;animation:glow-red 1s infinite;backdrop-filter:blur(4px);
+}
+@keyframes glow-red{0%,100%{box-shadow:0 0 6px rgba(255,64,96,.3);}50%{box-shadow:0 0 20px rgba(255,64,96,.8);}}
+.ob-title{font-size:.6rem;color:var(--red);letter-spacing:.15em;}
+.ob-dist{font-family:'Space Mono',monospace;font-size:1rem;color:var(--red);}
+.ob-unit{font-size:.55rem;color:var(--muted);margin-left:2px;}
+
+/* ── Carte inline (adaptative) ── */
+#map-panel{
+  flex:1;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+#map-toolbar{
+  display:flex;align-items:center;gap:6px;padding:6px 10px;
+  background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+#map-toolbar span{font-size:.58rem;letter-spacing:.12em;color:var(--muted);flex:1;}
+.mtbtn{
+  padding:3px 8px;border-radius:3px;font-family:'Chakra Petch',sans-serif;
+  font-size:.58rem;letter-spacing:.08em;cursor:pointer;border:1px solid var(--border);
+  background:transparent;color:var(--muted);transition:.15s;
+}
+.mtbtn.g{border-color:var(--green);color:var(--green);}
+.mtbtn.g:hover{background:rgba(0,255,157,.1);}
+.mtbtn.y{border-color:var(--yellow);color:var(--yellow);}
+.mtbtn.y:hover{background:rgba(255,208,96,.1);}
+.mtbtn.r{border-color:var(--red);color:var(--red);}
+.mtbtn.r:hover{background:rgba(255,64,96,.1);}
+.mtbtn.c{border-color:var(--cyan);color:var(--cyan);}
+.mtbtn.c:hover{background:rgba(0,200,255,.1);}
+
+#mapCanvas{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  background:var(--bg);display:block;
+}
+#map-stats{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(8,12,16,.85);backdrop-filter:blur(4px);
+  padding:4px 10px;font-size:.55rem;color:var(--muted);
+  display:flex;gap:12px;border-top:1px solid var(--border);
+}
+#scan-bar{display:none;padding:6px 10px;background:var(--s1);border-top:1px solid var(--border);flex-shrink:0;}
+.scan-progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.scan-fill{height:100%;width:0%;background:var(--yellow);transition:width .3s;}
+#scan-info{font-size:.55rem;color:var(--muted);margin-top:3px;letter-spacing:.05em;}
+
+/* ═══════════════════════════════════════════
+   COLONNE CENTRE — CONTRÔLES
+═══════════════════════════════════════════ */
+#col-center{
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+/* Sélecteur de mode */
+#mode-selector{
+  display:flex;gap:3px;padding:6px 10px;
+  background:var(--s1);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.mode-tab{
+  flex:1;padding:5px 2px;border-radius:3px;text-align:center;
+  font-size:.55rem;letter-spacing:.06em;cursor:pointer;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);transition:.15s;font-family:'Chakra Petch',sans-serif;
+}
+.mode-tab:hover{border-color:var(--cyan);color:var(--cyan);}
+.mode-tab.active{background:rgba(0,200,255,.1);border-color:var(--cyan);color:var(--cyan);}
+
+/* Panels contrôle */
+.ctrl-panel{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.ctrl-panel.show{display:flex;}
+
+/* Joystick */
+#ctrl-joy{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:16px;gap:10px;flex:1;
+  border-bottom:1px solid var(--border);
+}
+.section-label{font-size:.55rem;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;}
+#joystick-area{
+  position:relative;width:min(160px,38vw);height:min(160px,38vw);border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,var(--s2) 0%,var(--s0) 100%);
+  border:1px solid var(--border);touch-action:none;cursor:crosshair;
+  box-shadow:inset 0 2px 12px rgba(0,0,0,.6),0 0 0 1px rgba(0,200,255,.05);
+}
+#joystick-area::before{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:1px;height:100%;background:rgba(255,255,255,.04);}
+#joystick-area::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);height:1px;width:100%;background:rgba(255,255,255,.04);}
+#joystick-thumb{
+  position:absolute;width:40px;height:40px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,var(--s2),var(--bg));
+  border:1.5px solid var(--green);box-shadow:var(--gG);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  transition:box-shadow .1s;pointer-events:none;
+}
+#joystick-thumb.active{border-color:var(--cyan);box-shadow:var(--gC);}
+
+/* D-Pad */
+#ctrl-dpad{
+  display:flex;align-items:center;justify-content:center;gap:20px;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+}
+#dpad{display:grid;grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,36px);gap:3px;}
+.dp{
+  background:var(--s1);border:1px solid var(--border);border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:.85rem;transition:.1s;color:var(--muted);user-select:none;
+}
+.dp:hover{border-color:var(--green);color:var(--green);background:rgba(0,255,157,.06);}
+.dp.pressed{background:rgba(0,255,157,.12);border-color:var(--green);color:var(--green);box-shadow:var(--gG);}
+.dp.empty{background:transparent;border-color:transparent;cursor:default;}
+.dp.rot-left.pressed,.dp.rot-right.pressed{border-color:var(--cyan);color:var(--cyan);background:rgba(0,200,255,.08);}
+
+.key-hints{font-size:.55rem;color:var(--muted);line-height:1.8;}
+kbd{background:var(--s2);border:1px solid var(--border);border-radius:2px;
+  padding:1px 4px;font-family:'Space Mono',monospace;font-size:.48rem;color:var(--text);}
+
+/* Vitesse + Auto */
+#ctrl-bot{
+  display:grid;grid-template-columns:1fr 1fr;
+  border-top:0;
+}
+.ctrl-block{padding:10px 14px;border-right:1px solid var(--border);}
+.ctrl-block:last-child{border-right:none;}
+.spd-val{font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--green);}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;
+  background:var(--border);border-radius:2px;outline:none;margin:6px 0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+  width:12px;height:12px;border-radius:50%;background:var(--green);
+  cursor:pointer;box-shadow:var(--gG);border:2px solid var(--bg);}
+
+.auto-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+.abtn{
+  padding:3px 8px;border-radius:3px;font-family:'Chakra Petch',sans-serif;
+  font-size:.58rem;cursor:pointer;border:1px solid var(--border);
+  background:transparent;color:var(--muted);transition:.15s;letter-spacing:.05em;
+}
+.abtn:hover{opacity:.8;}
+#auto-status{font-size:.58rem;color:var(--muted);margin-top:5px;
+  display:flex;align-items:center;gap:5px;}
+#apulse{width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:.3s;}
+#apulse.on{background:var(--green);box-shadow:var(--gG);animation:pulse .8s infinite;}
+#apulse.ret{background:var(--cyan);box-shadow:var(--gC);animation:pulse .4s infinite;}
+
+/* ═══════════════════════════════════════════
+   COLONNE DROITE — STATUT + PHOTOS
+═══════════════════════════════════════════ */
+#col-right{
+  display:flex;flex-direction:column;
+  border-left:1px solid var(--border);
+  overflow:hidden;
+}
+
+/* Moteurs */
+#stat-motors{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.motor-row{display:flex;gap:6px;margin-top:6px;}
+.motor-chip{
+  flex:1;background:var(--s1);border:1px solid var(--border);border-radius:4px;
+  padding:5px 8px;display:flex;flex-direction:column;gap:2px;
+}
+.motor-chip label{font-size:.5rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;}
+.motor-val{font-family:'Space Mono',monospace;font-size:.75rem;color:var(--green);}
+.mode-chip{
+  width:100%;background:var(--s1);border:1px solid var(--border);border-radius:4px;
+  padding:5px 10px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;
+}
+.mode-label{font-size:.5rem;letter-spacing:.15em;color:var(--muted);}
+.mode-val{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);}
+
+/* Chenilles */
+.tank-bars{display:flex;gap:10px;height:50px;margin-top:6px;}
+.tbar-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;}
+.tbar-lbl{font-size:.5rem;color:var(--muted);}
+.tbar{width:100%;flex:1;background:var(--s2);border-radius:3px;
+  border:1px solid var(--border);position:relative;overflow:hidden;}
+.tbar-fill{position:absolute;bottom:50%;left:0;right:0;background:var(--green);opacity:.7;transition:height .1s,bottom .1s;}
+.tbar-fill.neg{background:var(--cyan);}
+.tbar-center{position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border);}
+
+/* Distance */
+#stat-dist{
+  padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+}
+.dist-icon{font-size:1.2rem;opacity:.6;}
+.dist-val{font-family:'Space Mono',monospace;font-size:1.4rem;color:var(--text);}
+.dist-unit{font-size:.6rem;color:var(--muted);align-self:flex-end;margin-bottom:3px;}
+.dist-label{font-size:.5rem;letter-spacing:.15em;color:var(--muted);}
+.dist-obstacle{color:var(--red);animation:pulse .5s infinite;}
+
+/* Photos historique */
+#photo-section{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;
+  min-height:0;
+}
+#photo-header{
+  padding:6px 14px;background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+#photo-count{font-size:.55rem;color:var(--muted);}
+#photo-gallery{
+  flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+  min-height:0;
+}
+#photo-gallery::-webkit-scrollbar{width:4px;}
+#photo-gallery::-webkit-scrollbar-track{background:transparent;}
+#photo-gallery::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.photo-card{
+  border:1px solid var(--border);border-radius:5px;overflow:hidden;
+  background:var(--s1);cursor:pointer;transition:.15s;flex-shrink:0;
+}
+.photo-card:hover{border-color:var(--cyan);}
+.photo-card.latest{border-color:var(--red);box-shadow:0 0 10px rgba(255,64,96,.2);}
+.photo-card img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;}
+.photo-card .photo-meta{
+  padding:4px 8px;display:flex;justify-content:space-between;align-items:center;
+  background:rgba(0,0,0,.4);
+}
+.photo-meta .photo-ts{font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted);}
+.photo-meta .photo-new{font-size:.5rem;color:var(--red);letter-spacing:.1em;}
+
+.no-photos{text-align:center;padding:30px 10px;color:var(--muted);font-size:.6rem;
+  letter-spacing:.1em;opacity:.5;}
+
+/* Lightbox photo */
+#lightbox{
+  display:none;position:fixed;inset:0;z-index:2000;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;flex-direction:column;gap:10px;
+}
+#lightbox.show{display:flex;}
+#lightbox img{max-width:90vw;max-height:80vh;border:1px solid var(--border);border-radius:6px;}
+#lightbox-meta{font-size:.65rem;color:var(--muted);}
+#lightbox-close{
+  position:absolute;top:16px;right:16px;
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  border-radius:4px;padding:6px 12px;cursor:pointer;font-family:'Chakra Petch',sans-serif;
+  font-size:.7rem;
+}
+#lightbox-close:hover{border-color:var(--red);color:var(--red);}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — TABLET (≤900px)
+═══════════════════════════════════════════ */
+@media(max-width:900px){
+  #main{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr;}
+  #col-left{grid-column:1/2;grid-row:1/2;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
+  #col-center{grid-column:2/3;grid-row:1/2;}
+  #col-right{grid-column:1/3;grid-row:2/3;border-left:none;border-top:1px solid var(--border);
+    flex-direction:row;}
+  #stat-motors{border-bottom:none;border-right:1px solid var(--border);flex:1;}
+  #stat-dist{border-bottom:none;border-right:1px solid var(--border);flex-direction:column;justify-content:center;}
+  #photo-section{flex:2;}
+  #cam-panel{height:220px;}
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤600px)
+═══════════════════════════════════════════ */
+@media(max-width:600px){
+  #main{grid-template-columns:1fr;grid-template-rows:auto;}
+  #col-left,#col-center,#col-right{grid-column:auto;grid-row:auto;border:none;}
+  #col-left{border-bottom:1px solid var(--border);}
+  #col-center{border-bottom:1px solid var(--border);}
+  #col-right{flex-direction:column;}
+  #stat-motors,#stat-dist{border-right:none;border-bottom:1px solid var(--border);}
+  #app{grid-template-rows:42px 1fr;}
+  #main{overflow-y:auto;height:calc(100vh - 42px);}
+  html,body{overflow:auto;}
+  #cam-panel{height:240px;}
+  #map-panel{height:260px;}
+  .key-hints{display:none;}
+  #ctrl-bot{grid-template-columns:1fr;}
+  .ctrl-block{border-right:none;border-bottom:1px solid var(--border);}
+  .ctrl-block:last-child{border-bottom:none;}
+  #col-right{max-height:350px;}
+  #photo-section{min-height:180px;}
+}
+
+/* ═══════════════════════════════════════════
+   SHARED UTILS
+═══════════════════════════════════════════ */
+.sep{height:1px;background:var(--border);margin:4px 0;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">ROBO<span>TANK</span></div>
+  <div class="hstats">
+    <div class="chip" id="chip-motor"><div class="dot" id="led-motor"></div>MOTEURS</div>
+    <div class="chip" id="chip-cam"><div class="dot" id="led-cam"></div>CAMÉRA</div>
+    <div class="chip" id="chip-dist"><div class="dot" id="led-dist"></div>SONAR</div>
+    <div class="chip" id="chip-xiao"><div class="dot" id="led-xiao"></div>ZIGBEE</div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<div id="main">
+
+  <!-- ── COL GAUCHE : CAMÉRA + CARTE ── -->
+  <div id="col-left">
+
+    <!-- Caméra -->
+    <div id="cam-panel">
+      <div id="cam-off"><div class="cam-ico">◉</div><p>FLUX INACTIF</p></div>
+      <img id="cam-feed" alt="live">
+      <div class="cam-badge" id="cam-badge"><div class="rec"></div>REC</div>
+      <div id="obstacle-overlay">
+        <div id="obstacle-banner">
+          <span>⚠</span>
+          <div>
+            <div class="ob-title">OBSTACLE</div>
+            <div><span class="ob-dist" id="dist-val">—</span><span class="ob-unit">cm</span></div>
+          </div>
+        </div>
+      </div>
+      <div id="cam-toggle-btn">
+        <span>CAM</span>
+        <label class="tgl">
+          <input type="checkbox" id="cam-tgl">
+          <div class="tgl-track"></div>
+          <div class="tgl-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Carte -->
+    <div id="map-panel">
+      <div id="map-toolbar">
+        <span id="map-status-txt">CARTE — en attente</span>
+        <button class="mtbtn g" onclick="startExplore()">▶ Explore</button>
+        <button class="mtbtn y" onclick="startScan()">⊞ Scan 1m²</button>
+        <button class="mtbtn r" onclick="stopAll()">⏹</button>
+        <button class="mtbtn" onclick="resetMap()">↺</button>
+      </div>
+      <canvas id="mapCanvas"></canvas>
+      <div id="map-stats">
+        <span id="map-pos">pos —</span>
+        <span id="map-rssi">WiFi —</span>
+        <span id="map-pts">0 pts</span>
+      </div>
+      <div id="scan-bar">
+        <div class="scan-progress"><div class="scan-fill" id="scan-fill"></div></div>
+        <div id="scan-info">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── COL CENTRE : CONTRÔLES ── -->
+  <div id="col-center">
+
+    <!-- Sélecteur de mode -->
+    <div id="mode-selector">
+      <button class="mode-tab active" onclick="setMode('joystick')" id="tab-joystick">🕹 JOYSTICK</button>
+      <button class="mode-tab" onclick="setMode('dpad')" id="tab-dpad">✛ D-PAD</button>
+      <button class="mode-tab" onclick="setMode('auto')" id="tab-auto">🤖 AUTONOME</button>
+      <button class="mode-tab" onclick="setMode('scan')" id="tab-scan">📡 SCAN</button>
+    </div>
+
+    <!-- Panel Joystick -->
+    <div class="ctrl-panel show" id="panel-joystick">
+      <div id="ctrl-joy">
+        <div class="section-label">Joystick virtuel</div>
+        <div id="joystick-area"><div id="joystick-thumb"></div></div>
+        <div style="font-size:.55rem;color:var(--muted);text-align:center;line-height:1.6;">
+          Glisse pour diriger<br>
+          <kbd>Z</kbd><kbd>S</kbd><kbd>Q</kbd><kbd>D</kbd> clavier
+        </div>
+      </div>
+      <div id="ctrl-bot">
+        <div class="ctrl-block">
+          <div class="section-label">Vitesse</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px;">
+            <span class="spd-val" id="spd-val">5</span>
+            <span style="font-size:.55rem;color:var(--muted)">/10</span>
+          </div>
+          <input type="range" min="1" max="10" value="5" id="spd-slider" oninput="setSpeed(this.value)">
+        </div>
+        <div class="ctrl-block">
+          <div class="section-label">Mode actif</div>
+          <div id="auto-status" style="margin-top:6px;"><div id="apulse"></div><span id="auto-txt">MANUEL</span></div>
+          <button class="abtn" style="border-color:var(--red);color:var(--red);margin-top:6px;" onclick="emergencyStop()">⏹ STOP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel D-Pad -->
+    <div class="ctrl-panel" id="panel-dpad">
+      <div id="ctrl-dpad" style="flex:1;flex-direction:column;justify-content:center;">
+        <div class="section-label" style="text-align:center;margin-bottom:10px;">D-Pad directionnel</div>
+        <div id="dpad" style="margin:0 auto;">
+          <div class="dp rot-left" id="dp-rl" onmousedown="kDown('rotL')" onmouseup="kUp('rotL')" ontouchstart="kDown('rotL')" ontouchend="kUp('rotL')">↺</div>
+          <div class="dp" id="dp-fwd" onmousedown="kDown('fwd')" onmouseup="kUp('fwd')" ontouchstart="kDown('fwd')" ontouchend="kUp('fwd')">▲</div>
+          <div class="dp rot-right" id="dp-rr" onmousedown="kDown('rotR')" onmouseup="kUp('rotR')" ontouchstart="kDown('rotR')" ontouchend="kUp('rotR')">↻</div>
+          <div class="dp" id="dp-left" onmousedown="kDown('left')" onmouseup="kUp('left')" ontouchstart="kDown('left')" ontouchend="kUp('left')">◀</div>
+          <div class="dp empty"></div>
+          <div class="dp" id="dp-right" onmousedown="kDown('right')" onmouseup="kUp('right')" ontouchstart="kDown('right')" ontouchend="kUp('right')">▶</div>
+          <div class="dp empty"></div>
+          <div class="dp" id="dp-bwd" onmousedown="kDown('bwd')" onmouseup="kUp('bwd')" ontouchstart="kDown('bwd')" ontouchend="kUp('bwd')">▼</div>
+          <div class="dp empty"></div>
+        </div>
+        <div class="key-hints" style="text-align:center;margin-top:10px;">
+          <div><kbd>Z</kbd><kbd>↑</kbd> Avant · <kbd>S</kbd><kbd>↓</kbd> Arrière</div>
+          <div><kbd>Q</kbd><kbd>←</kbd> Gauche · <kbd>D</kbd><kbd>→</kbd> Droite</div>
+          <div><kbd>A</kbd> Rot.G · <kbd>E</kbd> Rot.D</div>
+        </div>
+      </div>
+      <div id="ctrl-bot-dpad" style="display:grid;grid-template-columns:1fr 1fr;">
+        <div class="ctrl-block">
+          <div class="section-label">Vitesse</div>
+          <span class="spd-val" id="spd-val2">5</span>
+          <input type="range" min="1" max="10" value="5" id="spd-slider2" oninput="setSpeed2(this.value)">
+        </div>
+        <div class="ctrl-block">
+          <button class="abtn" style="border-color:var(--red);color:var(--red);margin-top:10px;width:100%;" onclick="emergencyStop()">⏹ STOP URGENCE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Autonome -->
+    <div class="ctrl-panel" id="panel-auto">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:20px 16px;">
+        <div class="section-label">Navigation autonome</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button class="abtn" style="padding:12px;border-color:var(--green);color:var(--green);font-size:.7rem;" onclick="autoStart()">
+            ▶ DÉMARRER<br><span style="font-size:.55rem;opacity:.7;">Exploration libre</span>
+          </button>
+          <button class="abtn" style="padding:12px;border-color:var(--red);color:var(--red);font-size:.7rem;" onclick="autoStop()">
+            ⏹ ARRÊTER<br><span style="font-size:.55rem;opacity:.7;">Stop immédiat</span>
+          </button>
+          <button class="abtn" style="padding:12px;border-color:var(--cyan);color:var(--cyan);font-size:.7rem;" onclick="autoReturn()">
+            ⌂ RETOUR<br><span style="font-size:.55rem;opacity:.7;">Point de départ</span>
+          </button>
+          <button class="abtn" style="padding:12px;border-color:var(--red);color:var(--red);font-size:.7rem;" onclick="emergencyStop()">
+            ✕ URGENCE<br><span style="font-size:.55rem;opacity:.7;">Stop forcé</span>
+          </button>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:10px;">
+          <div class="section-label" style="margin-bottom:6px;">État</div>
+          <div id="auto-status2" style="display:flex;align-items:center;gap:6px;">
+            <div id="apulse2" style="width:7px;height:7px;border-radius:50%;background:var(--muted);"></div>
+            <span id="auto-txt2" style="font-size:.7rem;color:var(--muted);">MANUEL</span>
+          </div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:10px;">
+          <div class="section-label" style="margin-bottom:6px;">Vitesse</div>
+          <input type="range" min="1" max="10" value="5" id="spd-slider3" oninput="setSpeed3(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Scan RSSI -->
+    <div class="ctrl-panel" id="panel-scan">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:20px 16px;">
+        <div class="section-label">Cartographie WiFi 1m²</div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:12px;font-size:.6rem;color:var(--muted);line-height:1.8;">
+          Le robot parcourt une grille 5×5 points<br>
+          espacés de 25cm sur 1m² et mesure<br>
+          le signal WiFi à chaque position.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="abtn" style="padding:12px;border-color:var(--yellow);color:var(--yellow);font-size:.7rem;" onclick="startScan()">
+            ⊞ LANCER SCAN 1m²
+          </button>
+          <button class="abtn" style="padding:8px;border-color:var(--red);color:var(--red);font-size:.65rem;" onclick="stopAll()">
+            ⏹ ARRÊTER
+          </button>
+        </div>
+        <div id="scan-status-panel" style="background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:10px;display:none;">
+          <div class="section-label" style="margin-bottom:6px;">Progression</div>
+          <div class="scan-progress"><div class="scan-fill" id="scan-fill2"></div></div>
+          <div id="scan-info2" style="font-size:.58rem;color:var(--muted);margin-top:4px;">—</div>
+        </div>
+        <div id="scan-results-panel" style="background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:10px;display:none;">
+          <div class="section-label" style="margin-bottom:4px;">Résultats</div>
+          <div id="scan-result-txt" style="font-size:.65rem;color:var(--green);font-family:'Space Mono',monospace;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── COL DROITE : STATUT + PHOTOS ── -->
+  <div id="col-right">
+
+    <!-- Moteurs -->
+    <div id="stat-motors">
+      <div class="section-label">Moteurs</div>
+      <div class="motor-row">
+        <div class="motor-chip"><label>G</label><div class="motor-val" id="vL">—</div></div>
+        <div class="motor-chip"><label>D</label><div class="motor-val" id="vR">—</div></div>
+      </div>
+      <div class="mode-chip">
+        <span class="mode-label">MODE</span>
+        <span class="mode-val" id="vMode">STOP</span>
+      </div>
+      <div class="tank-bars">
+        <div class="tbar-wrap"><div class="tbar-lbl">G</div>
+          <div class="tbar"><div class="tbar-center"></div><div class="tbar-fill" id="fill-L"></div></div></div>
+        <div class="tbar-wrap"><div class="tbar-lbl">D</div>
+          <div class="tbar"><div class="tbar-center"></div><div class="tbar-fill" id="fill-R"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Distance -->
+    <div id="stat-dist">
+      <div class="dist-icon">◎</div>
+      <div>
+        <div class="dist-label">HC-SR04</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="dist-val" id="dist-main">—</span>
+          <span class="dist-unit">cm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historique photos -->
+    <div id="photo-section">
+      <div id="photo-header">
+        <div class="section-label">Photos obstacle</div>
+        <span id="photo-count">0 photo</span>
+      </div>
+      <div id="photo-gallery">
+        <div class="no-photos" id="no-photos">Aucune photo</div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- #main -->
+</div><!-- #app -->
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕ FERMER</button>
+  <img id="lb-img" src="" alt="">
+  <div id="lightbox-meta"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  SÉLECTEUR DE MODE CONTRÔLE
+// ══════════════════════════════════════════
+let currentMode = 'joystick';
+
+function setMode(mode) {
+  currentMode = mode;
+  // Tabs
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+mode).classList.add('active');
+  // Panels
+  document.querySelectorAll('.ctrl-panel').forEach(p => p.classList.remove('show'));
+  document.getElementById('panel-'+mode).classList.add('show');
+}
+
+function setSpeed2(v) {
+  document.getElementById('spd-val2').textContent=v;
+  document.getElementById('spd-slider').value=v;
+  setSpeed(v);
+}
+function setSpeed3(v) {
+  document.getElementById('spd-slider').value=v;
+  setSpeed(v);
+}
+
+async function emergencyStop() {
+  sendDrive(0,0);
+  await fetch('/api/stop',{method:'POST'}).catch(()=>{});
+  await autoStop().catch(()=>{});
+}
+
+// Sync état auto sur tous les panels
+function updateAutoUI(d) {
+  const p=document.getElementById('apulse');
+  const t=document.getElementById('auto-txt');
+  const p2=document.getElementById('apulse2');
+  const t2=document.getElementById('auto-txt2');
+  if(d.returning){
+    [p,p2].forEach(el=>{if(el)el.className='ret';});
+    [t,t2].forEach(el=>{if(el){el.textContent='⌂ RETOUR...';el.style.color='var(--cyan)';}});
+  }else if(d.auto){
+    [p,p2].forEach(el=>{if(el)el.style.cssText='background:var(--green);box-shadow:var(--gG);animation:pulse .8s infinite;';});
+    [t,t2].forEach(el=>{if(el){el.textContent='AUTO';el.style.color='var(--green)';}});
+  }else{
+    [p,p2].forEach(el=>{if(el)el.style.cssText='background:var(--muted);';});
+    [t,t2].forEach(el=>{if(el){el.textContent='MANUEL';el.style.color='var(--muted)';}});
+  }
+}
+
+// ══════════════════════════════════════════
+//  SCAN — sync sur panel scan aussi
+// ══════════════════════════════════════════
+let scanP=null;
+async function startScan(){
+  await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start'})});
+  document.getElementById('map-status-txt').textContent='SCAN 1m² en cours...';
+  document.getElementById('scan-bar').style.display='block';
+  document.getElementById('scan-status-panel').style.display='block';
+  document.getElementById('scan-results-panel').style.display='none';
+  resizeCanvas();
+  if(!mapPolling)mapPolling=setInterval(fetchMap,500);
+  if(scanP)clearInterval(scanP);
+  scanP=setInterval(async()=>{
+    try{
+      const r=await fetch('/api/scan/status');
+      const d=await r.json();
+      const p=d.progress,pct=p.total>0?Math.round(p.current/p.total*100):0;
+      // Barre dans map toolbar
+      document.getElementById('scan-fill').style.width=pct+'%';
+      // Barre dans panel scan
+      document.getElementById('scan-fill2').style.width=pct+'%';
+      const txt=d.stats&&d.stats.count>0
+        ?`${p.current}/${p.total} pts — moy ${d.stats.avg}dBm [${d.stats.min}/${d.stats.max}]`
+        :`${p.current}/${p.total} pts`;
+      document.getElementById('scan-info').textContent=txt;
+      document.getElementById('scan-info2').textContent=txt;
+      if(p.status==='done'){
+        clearInterval(scanP);scanP=null;
+        clearInterval(mapPolling);mapPolling=null;
+        const msg=`✓ Scan terminé — ${d.stats.count} pts, moy ${d.stats.avg}dBm`;
+        document.getElementById('map-status-txt').textContent=msg;
+        document.getElementById('scan-bar').style.display='none';
+        document.getElementById('scan-status-panel').style.display='none';
+        document.getElementById('scan-results-panel').style.display='block';
+        document.getElementById('scan-result-txt').textContent=
+          `${d.stats.count} pts mesurés\nMoyenne : ${d.stats.avg} dBm\nMin : ${d.stats.min} dBm\nMax : ${d.stats.max} dBm`;
+        resizeCanvas();fetchMap();
+      }
+    }catch(e){}
+  },600);
+}
+
+// ══════════════════════════════════════════
+//  HORLOGE
+// ══════════════════════════════════════════
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('fr-FR'),1000);
+
+// ══════════════════════════════════════════
+//  JOYSTICK
+// ══════════════════════════════════════════
+const jArea=document.getElementById('joystick-area');
+const jThumb=document.getElementById('joystick-thumb');
+const RADIUS=58;
+let jActive=false,jX=0,jY=0,sendTimer=null;
+
+function jCenter(){const r=jArea.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};}
+function jMove(cx,cy){
+  const o=jCenter();let dx=cx-o.x,dy=cy-o.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist>RADIUS){dx=dx/dist*RADIUS;dy=dy/dist*RADIUS;}
+  jX=dx/RADIUS;jY=-(dy/RADIUS);
+  const w=jArea.offsetWidth,h=jArea.offsetHeight;
+  jThumb.style.left=(50+dx/w*100)+'%';jThumb.style.top=(50+dy/h*100)+'%';
+  jThumb.classList.add('active');updateUI(jX,jY);throttleSend(jX,jY);
+}
+function jRelease(){
+  jActive=false;jX=0;jY=0;
+  jThumb.style.left='50%';jThumb.style.top='50%';
+  jThumb.classList.remove('active');updateUI(0,0);sendDrive(0,0);
+}
+jArea.addEventListener('mousedown',e=>{jActive=true;jMove(e.clientX,e.clientY);});
+jArea.addEventListener('touchstart',e=>{e.preventDefault();jActive=true;jMove(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+window.addEventListener('mousemove',e=>{if(jActive)jMove(e.clientX,e.clientY);});
+window.addEventListener('touchmove',e=>{if(jActive){e.preventDefault();jMove(e.touches[0].clientX,e.touches[0].clientY);}},{passive:false});
+window.addEventListener('mouseup',()=>{if(jActive)jRelease();});
+window.addEventListener('touchend',()=>{if(jActive)jRelease();});
+
+// ══════════════════════════════════════════
+//  CLAVIER
+// ══════════════════════════════════════════
+const KEYS_DOWN={};
+const KEY_MAP={'KeyZ':'fwd','ArrowUp':'fwd','KeyS':'bwd','ArrowDown':'bwd',
+  'KeyQ':'left','ArrowLeft':'left','KeyD':'right','ArrowRight':'right','KeyA':'rotL','KeyE':'rotR'};
+const DP_MAP={fwd:'dp-fwd',bwd:'dp-bwd',left:'dp-left',right:'dp-right',rotL:'dp-rl',rotR:'dp-rr'};
+let keyLoopId=null;
+function keysToXY(){
+  let x=0,y=0;
+  if(KEYS_DOWN['fwd'])y+=1;if(KEYS_DOWN['bwd'])y-=1;
+  if(KEYS_DOWN['left'])x-=0.5;if(KEYS_DOWN['right'])x+=0.5;
+  if(KEYS_DOWN['rotL']){x=-1;y=0;}if(KEYS_DOWN['rotR']){x=1;y=0;}
+  return{x,y};
+}
+function startKeyLoop(){if(keyLoopId)return;keyLoopId=setInterval(()=>{const{x,y}=keysToXY();updateUI(x,y);sendDrive(x,y);},80);}
+function stopKeyLoop(){clearInterval(keyLoopId);keyLoopId=null;updateUI(0,0);sendDrive(0,0);}
+document.addEventListener('keydown',e=>{
+  const a=KEY_MAP[e.code];if(!a)return;e.preventDefault();if(KEYS_DOWN[a])return;
+  KEYS_DOWN[a]=true;const dp=document.getElementById(DP_MAP[a]);if(dp)dp.classList.add('pressed');startKeyLoop();
+});
+document.addEventListener('keyup',e=>{
+  const a=KEY_MAP[e.code];if(!a)return;delete KEYS_DOWN[a];
+  const dp=document.getElementById(DP_MAP[a]);if(dp)dp.classList.remove('pressed');
+  if(!Object.keys(KEYS_DOWN).length)stopKeyLoop();else startKeyLoop();
+});
+function kDown(a){KEYS_DOWN[a]=true;const dp=document.getElementById(DP_MAP[a]);if(dp)dp.classList.add('pressed');startKeyLoop();}
+function kUp(a){delete KEYS_DOWN[a];const dp=document.getElementById(DP_MAP[a]);if(dp)dp.classList.remove('pressed');if(!Object.keys(KEYS_DOWN).length)stopKeyLoop();}
+
+// ══════════════════════════════════════════
+//  API DRIVE
+// ══════════════════════════════════════════
+let lastL=null,lastR=null;
+function throttleSend(x,y){clearTimeout(sendTimer);sendTimer=setTimeout(()=>sendDrive(x,y),40);}
+async function sendDrive(x,y){
+  const L=Math.max(-1,Math.min(1,y+x)),R=Math.max(-1,Math.min(1,y-x));
+  const ld=Math.abs(L)<0.1?0:(L>0?1:-1),rd=Math.abs(R)<0.1?0:(R>0?1:-1);
+  if(ld===lastL&&rd===lastR)return;lastL=ld;lastR=rd;
+  try{await fetch('/api/drive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({x,y})});}catch(e){}
+}
+
+// ══════════════════════════════════════════
+//  UI MOTEURS
+// ══════════════════════════════════════════
+function updateUI(x,y){
+  const L=Math.max(-1,Math.min(1,y+x)),R=Math.max(-1,Math.min(1,y-x));
+  document.getElementById('vL').textContent=L>0.1?'AVT':L<-0.1?'ARR':'—';
+  document.getElementById('vR').textContent=R>0.1?'AVT':R<-0.1?'ARR':'—';
+  let mode='STOP';
+  if(Math.abs(y)>0.1&&Math.abs(x)<0.15)mode=y>0?'AVT':'ARR';
+  else if(Math.abs(x)>0.5&&Math.abs(y)<0.15)mode=x>0?'ROT.D':'ROT.G';
+  else if(Math.abs(x)>0.1||Math.abs(y)>0.1)mode='COURBE';
+  const vm=document.getElementById('vMode');
+  vm.textContent=mode;
+  vm.style.color=mode==='STOP'?'var(--muted)':'var(--green)';
+  document.getElementById('led-motor').className='dot'+(mode==='STOP'?'':' move');
+  setBar('fill-L',L);setBar('fill-R',R);
+}
+function setBar(id,v){
+  const el=document.getElementById(id),pct=Math.abs(v)*50;
+  if(v>=0){el.style.height=pct+'%';el.style.bottom='50%';el.className='tbar-fill';}
+  else{el.style.height=pct+'%';el.style.bottom=(50-pct)+'%';el.className='tbar-fill neg';}
+}
+
+// ══════════════════════════════════════════
+//  VITESSE
+// ══════════════════════════════════════════
+async function setSpeed(v){
+  document.getElementById('spd-val').textContent=v;
+  try{await fetch('/api/speed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:parseInt(v)})});}catch(e){}
+}
+
+// ══════════════════════════════════════════
+//  DISTANCE + STATUT
+// ══════════════════════════════════════════
+const OBSTACLE_SEUIL=15;
+
+async function fetchStatus(){
+  try{
+    const r=await fetch('/api/status');
+    const d=await r.json();
+    // Zigbee
+    const xchip=document.getElementById('chip-xiao');
+    xchip.className='chip'+(d.xiao_connected?' active':'');
+    // Auto
+    updateAutoUI({auto:d.auto_mode,returning:d.auto_returning});
+  }catch(e){}
+}
+
+async function fetchDistance(){
+  try{
+    const r=await fetch('/api/distance');
+    const d=await r.json();
+    // Affiche la distance même si le capteur n'est pas "connecte" selon l'API
+    // On affiche dès qu'on a une valeur numérique valide
+    let val='—';
+    if(d.distance!==null && d.distance!==undefined && d.distance>=0){
+      val=d.distance.toFixed(1);
+    }
+    document.getElementById('dist-val').textContent=val;
+    document.getElementById('dist-main').textContent=val;
+    const ov=document.getElementById('obstacle-overlay');
+    const ld=document.getElementById('led-dist');
+    const dc=document.getElementById('chip-dist');
+    const hasData=(val!=='—');
+    if(hasData && d.distance<OBSTACLE_SEUIL){
+      ov.style.display='flex';
+      ld.className='dot err';
+      dc.className='chip warn';
+    }else{
+      ov.style.display='none';
+      if(hasData){
+        ld.style.cssText='background:var(--green);box-shadow:var(--gG);';
+        dc.className='chip active';
+      }else{
+        ld.style.cssText='';
+        dc.className='chip';
+      }
+    }
+  }catch(e){}
+}
+
+setInterval(fetchDistance,300);
+setInterval(fetchStatus,1000);
+fetchDistance();fetchStatus();
+
+// ══════════════════════════════════════════
+//  CAMÉRA
+// ══════════════════════════════════════════
+document.getElementById('cam-tgl').addEventListener('change',async function(){
+  const on=this.checked;
+  try{
+    const r=await fetch('/api/camera',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:on})});
+    const d=await r.json();const ok=d.camera;
+    document.getElementById('cam-off').style.display=ok?'none':'flex';
+    const feed=document.getElementById('cam-feed');
+    feed.src=ok?'/video_feed?'+Date.now():'';feed.style.display=ok?'block':'none';
+    document.getElementById('cam-badge').className='cam-badge'+(ok?' show':'');
+    document.getElementById('led-cam').className='dot'+(ok?' on':'');
+    document.getElementById('chip-cam').className='chip'+(ok?' active':'');
+    if(on&&!ok)this.checked=false;
+  }catch(e){}
+});
+
+// ══════════════════════════════════════════
+//  PHOTOS HISTORIQUE
+// ══════════════════════════════════════════
+let photoHistory=[];
+let lastPhotoFile=null;
+
+async function fetchPhotos(){
+  try{
+    const r=await fetch('/api/photos');
+    const d=await r.json();
+    if(!d.photos||!d.photos.length)return;
+    // Vérifier si nouvelles photos
+    const newest=d.photos[d.photos.length-1];
+    if(newest.filename===lastPhotoFile)return;
+    lastPhotoFile=newest.filename;
+    photoHistory=d.photos;
+    renderPhotoGallery();
+  }catch(e){
+    // Fallback vers l'ancien endpoint
+    fetchLastPhotoFallback();
+  }
+}
+
+async function fetchLastPhotoFallback(){
+  try{
+    const r=await fetch('/api/last_photo');
+    const d=await r.json();
+    if(!d.photo||d.filename===lastPhotoFile)return;
+    lastPhotoFile=d.filename;
+    // Ajouter à l'historique local
+    const existing=photoHistory.find(p=>p.filename===d.filename);
+    if(!existing){
+      photoHistory.unshift({filename:d.filename,data:d.photo,total:d.total});
+      if(photoHistory.length>20)photoHistory=photoHistory.slice(0,20);
+      renderPhotoGallery();
+    }
+  }catch(e){}
+}
+
+function renderPhotoGallery(){
+  const gallery=document.getElementById('photo-gallery');
+  const noP=document.getElementById('no-photos');
+  document.getElementById('photo-count').textContent=`${photoHistory.length} photo${photoHistory.length>1?'s':''}`;
+
+  if(!photoHistory.length){noP.style.display='block';return;}
+  noP.style.display='none';
+  gallery.innerHTML='';
+
+  photoHistory.forEach((p,i)=>{
+    const card=document.createElement('div');
+    card.className='photo-card'+(i===0?' latest':'');
+
+    const img=document.createElement('img');
+    img.alt='obstacle';
+    img.loading='lazy';
+    img.src='data:image/jpeg;base64,'+p.data;
+    card.appendChild(img);
+
+    const meta=document.createElement('div');
+    meta.className='photo-meta';
+    const ts=p.filename.replace('obstacle_','').replace('.jpg','').replace(/_/g,' ');
+    const tsSpan=document.createElement('span');
+    tsSpan.className='photo-ts';
+    tsSpan.textContent=ts;
+    meta.appendChild(tsSpan);
+    if(i===0){
+      const badge=document.createElement('span');
+      badge.className='photo-new';
+      badge.textContent='NOUVEAU';
+      meta.appendChild(badge);
+    }
+    card.appendChild(meta);
+    card.onclick=()=>openLightbox(p.data,ts);
+    gallery.appendChild(card);
+  });
+}
+
+function openLightbox(data,ts){
+  document.getElementById('lb-img').src='data:image/jpeg;base64,'+data;
+  document.getElementById('lightbox-meta').textContent=ts;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox(e){
+  if(e&&e.target!==document.getElementById('lightbox')&&e.target!==document.getElementById('lightbox-close'))return;
+  document.getElementById('lightbox').classList.remove('show');
+}
+
+setInterval(fetchLastPhotoFallback, 500);  // poll toutes les 500ms
+fetchLastPhotoFallback();  // appel immédiat au chargement
+
+// ══════════════════════════════════════════
+//  MODE AUTONOME
+// ══════════════════════════════════════════
+async function autoStart(){
+  await fetch('/api/auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start'})});
+}
+async function autoStop(){
+  await fetch('/api/auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop'})});
+}
+async function autoReturn(){
+  await fetch('/api/auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'return'})});
+}
+
+// ══════════════════════════════════════════
+//  CARTE ADAPTATIVE
+// ══════════════════════════════════════════
+const canvas=document.getElementById('mapCanvas');
+const ctx=canvas.getContext('2d');
+let mapData=null;
+let mapPolling=null;
+let scanPolling=null;
+
+// Redimensionne le canvas au conteneur
+function resizeCanvas(){
+  const panel=document.getElementById('map-panel');
+  const toolbar=document.getElementById('map-toolbar');
+  const stats=document.getElementById('map-stats');
+  const scanbar=document.getElementById('scan-bar');
+  const h=panel.offsetHeight-toolbar.offsetHeight-stats.offsetHeight-
+    (scanbar.style.display!=='none'?scanbar.offsetHeight:0);
+  canvas.width=panel.offsetWidth;
+  canvas.height=Math.max(h,100);
+  if(mapData)drawMap(mapData);
+}
+new ResizeObserver(resizeCanvas).observe(document.getElementById('map-panel'));
+window.addEventListener('resize',resizeCanvas);
+setTimeout(resizeCanvas,100);
+
+function rssiToColor(rssi){
+  const t=Math.max(0,Math.min(1,(rssi+90)/50));
+  const r=Math.round(255*(1-t)),g=Math.round(200*t);
+  return`rgba(${r},${g},40,0.8)`;
+}
+
+function drawMap(data){
+  if(!data)return;
+  const{grid,rssi,width,height,robot,rssi_stats}=data;
+  const W=canvas.width,H=canvas.height;
+
+  // Calcule la zone visible — centre sur le robot
+  const ZOOM=Math.min(W,H)/20;  // cases visibles
+  const cx=robot.x,cy=robot.y;
+  const visW=W/ZOOM,visH=H/ZOOM;
+  const x0=cx-visW/2,y0=cy-visH/2;  // coin haut-gauche en cases
+
+  ctx.clearRect(0,0,W,H);
+
+  // Fond grille
+  ctx.fillStyle='var(--bg)';
+  ctx.fillRect(0,0,W,H);
+
+  // Grille légère
+  ctx.strokeStyle='rgba(30,45,61,.4)';
+  ctx.lineWidth=.5;
+  for(let gx=Math.floor(x0);gx<x0+visW+1;gx++){
+    const px=(gx-x0)*ZOOM;
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
+  }
+  for(let gy=Math.floor(y0);gy<y0+visH+1;gy++){
+    const py=(gy-y0)*ZOOM;
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
+  }
+
+  // Cellules
+  for(let gy=Math.max(0,Math.floor(y0));gy<Math.min(height,Math.ceil(y0+visH));gy++){
+    for(let gx=Math.max(0,Math.floor(x0));gx<Math.min(width,Math.ceil(x0+visW));gx++){
+      const v=grid[gy][gx];
+      const r=rssi&&rssi[gy]?rssi[gy][gx]:null;
+      const px=(gx-x0)*ZOOM, py=(gy-y0)*ZOOM;
+      const sz=ZOOM+0.5;
+
+      if(r!==null&&r!==undefined&&v!==2){
+        ctx.fillStyle=rssiToColor(r);
+        ctx.fillRect(px,py,sz,sz);
+      }else if(v===1){
+        ctx.fillStyle='rgba(0,200,255,.15)';
+        ctx.fillRect(px,py,sz,sz);
+      }else if(v===2){
+        ctx.fillStyle='rgba(255,64,96,.6)';
+        ctx.fillRect(px,py,sz,sz);
+      }
+    }
+  }
+
+  // Robot — triangle orienté
+  const rx=(cx-x0)*ZOOM, ry=(cy-y0)*ZOOM;
+  const ra=(robot.angle-90)*Math.PI/180;
+  const sz2=ZOOM*0.7;
+  ctx.save();
+  ctx.translate(rx,ry);
+  ctx.rotate(ra);
+  ctx.beginPath();
+  ctx.moveTo(0,-sz2);ctx.lineTo(sz2*.6,sz2*.6);ctx.lineTo(-sz2*.6,sz2*.6);
+  ctx.closePath();
+  ctx.fillStyle='#ffd060';ctx.shadowColor='#ffd060';ctx.shadowBlur=10;
+  ctx.fill();
+  ctx.restore();
+
+  // Tracé du chemin (point)
+  ctx.fillStyle='rgba(0,255,157,.4)';
+  ctx.shadowBlur=0;
+  ctx.beginPath();ctx.arc(rx,ry,2,0,Math.PI*2);ctx.fill();
+
+  // Stats overlay
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(8,12,16,.7)';
+  ctx.fillRect(0,0,W,18);
+  ctx.fillStyle='rgba(74,96,112,.8)';
+  ctx.font='10px Space Mono,monospace';
+  ctx.fillText(`x:${robot.x.toFixed(0)} y:${robot.y.toFixed(0)} θ:${robot.angle.toFixed(0)}°`,6,12);
+
+  // Légende RSSI
+  if(rssi_stats&&rssi_stats.count>0){
+    const lx=W-14,ly=22,lh=70;
+    const grad=ctx.createLinearGradient(0,ly,0,ly+lh);
+    grad.addColorStop(0,'rgba(0,200,40,.8)');
+    grad.addColorStop(1,'rgba(255,0,40,.8)');
+    ctx.fillStyle=grad;ctx.fillRect(lx,ly,10,lh);
+    ctx.fillStyle='rgba(74,96,112,.9)';ctx.font='8px Space Mono,monospace';
+    ctx.fillText('-40',lx-22,ly+8);ctx.fillText('-90',lx-22,ly+lh);
+
+    // Stats texte
+    document.getElementById('map-rssi').textContent=
+      `WiFi ${rssi_stats.avg}dBm [${rssi_stats.min}/${rssi_stats.max}]`;
+    document.getElementById('map-pts').textContent=`${rssi_stats.count} pts`;
+  }
+
+  document.getElementById('map-pos').textContent=
+    `x:${robot.x.toFixed(0)} y:${robot.y.toFixed(0)}`;
+}
+
+async function fetchMap(){
+  try{
+    const r=await fetch('/api/map');
+    const d=await r.json();
+    mapData=d;
+    drawMap(d);
+  }catch(e){}
+}
+
+// Polling carte en continu (pas seulement en mode explore)
+setInterval(fetchMap,800);
+fetchMap();
+
+async function startExplore(){
+  await fetch('/api/explore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start'})});
+  document.getElementById('map-status-txt').textContent='EXPLORATION en cours...';
+  if(!mapPolling)mapPolling=setInterval(fetchMap,400);
+}
+async function stopAll(){
+  await fetch('/api/explore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop'})});
+  await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop'})});
+  clearInterval(scanPolling);scanPolling=null;
+  clearInterval(mapPolling);mapPolling=null;
+  document.getElementById('scan-bar').style.display='none';
+  document.getElementById('map-status-txt').textContent='CARTE — arrêté';
+}
+async function resetMap(){
+  await fetch('/api/explore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset'})});
+  document.getElementById('map-status-txt').textContent='CARTE — réinitialisée';
+  fetchMap();
+}
+
+</script>
+</body>
+</html>
